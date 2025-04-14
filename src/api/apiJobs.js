@@ -84,17 +84,35 @@ export async function saveJob(token, { alreadySaved }, saveData) {
     return data;
   } else {
     // If the job is not saved, add it to saved jobs
-    const { data, error: insertError } = await supabase
+    const { data: existingJob, error: checkError } = await supabase
       .from("saved_jobs")
-      .insert([saveData])
-      .select();
+      .select()
+      .eq("job_id", saveData.job_id)
+      .single();
 
-    if (insertError) {
-      console.error("Error saving job:", insertError);
+      if (checkError && checkError.code !== "PGRST116") { // PGRST116: No rows found
+        console.error("Error checking if job already exists:", checkError);
+        return null;
+      }
+  
+      if (existingJob) {
+        // **Change**: If the job already exists, prevent inserting it again
+        console.log("Job is already saved, not inserting again.");
+        return existingJob;
+      }
+  
+      // If the job doesn't exist, insert it into the saved jobs
+      const { data, error: insertError } = await supabase
+        .from("saved_jobs")
+        .insert([saveData])
+        .select();
+  
+      if (insertError) {
+        console.error("Error saving job:", insertError);
+        return data;
+      }
+  
       return data;
-    }
-
-    return data;
   }
 }
 
