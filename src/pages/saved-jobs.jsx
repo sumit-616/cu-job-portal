@@ -1,4 +1,5 @@
-import { getSavedJobs } from "@/api/apiJobs";
+import { getSavedJobs, saveJob } from "@/api/apiJobs";
+import { useState } from "react";
 import JobCard from "@/components/job-card";
 import useFetch from "@/hooks/use-fetch";
 import { useUser } from "@clerk/clerk-react";
@@ -13,6 +14,33 @@ const SavedJobs = () => {
     data: savedJobs,
     fn: fnSavedJobs,
   } = useFetch(getSavedJobs);
+
+  const [savedJobIds, setSavedJobIds] = useState([]);
+
+  useEffect(() => {
+    if (savedJobs?.length) {
+      setSavedJobIds(savedJobs.map(job => job.job_id)); 
+    }
+  }, [savedJobs]);
+
+  const handleJobAction = async (jobId) => {
+  setSavedJobIds((prevSavedJobIds) => {
+    const alreadySaved = prevSavedJobIds.includes(jobId);
+
+    const saveData = { job_id: jobId };
+
+    saveJob({ alreadySaved, saveData });
+
+    if (alreadySaved) {
+      return prevSavedJobIds.filter(id => id !== jobId);
+    } else {
+      return [...prevSavedJobIds, jobId];
+    }
+  });
+
+  fnSavedJobs();
+};
+
 
   useEffect(() => {
     if (isLoaded) {
@@ -39,7 +67,7 @@ const SavedJobs = () => {
                 <JobCard
                   key={saved.id}
                   job={saved?.job}
-                  onJobAction={fnSavedJobs}
+                  onJobAction={() => handleJobAction(saved.job_id)}
                   savedInit={true}
                 />
               );
